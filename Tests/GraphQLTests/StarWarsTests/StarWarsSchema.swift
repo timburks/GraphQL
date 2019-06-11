@@ -11,16 +11,6 @@ import GraphQL
  * Wars trilogy.
  */
 
-// TODO: implement MapRepresentable automatically for RawRepresentables
-extension Episode : MapRepresentable {
-    var map: Map {
-        return rawValue.map
-    }
-}
-
-extension Human : MapFallibleRepresentable {}
-extension Droid : MapFallibleRepresentable {}
-
 /**
  * Using our shorthand to describe type systems, the type system for our
  * Star Wars example is:
@@ -70,15 +60,15 @@ let EpisodeEnum = try! GraphQLEnumType(
     description: "One of the films in the Star Wars Trilogy",
     values: [
         "NEWHOPE": GraphQLEnumValue(
-            value: Episode.newHope,
+            value: Map(Episode.newHope.rawValue),
             description: "Released in 1977."
         ),
         "EMPIRE": GraphQLEnumValue(
-            value: Episode.empire,
+            value: Map(Episode.empire.rawValue),
             description: "Released in 1980."
         ),
         "JEDI": GraphQLEnumValue(
-            value: Episode.jedi,
+            value: Map(Episode.jedi.rawValue),
             description: "Released in 1983."
         ),
     ]
@@ -160,8 +150,8 @@ let HumanType = try! GraphQLObjectType(
             type: GraphQLList(CharacterInterface),
             description: "The friends of the human, or an empty list if they " +
             "have none.",
-            resolve: { human, _, _, eventLoopGroup, _ in
-                return eventLoopGroup.next().newSucceededFuture(result: getFriends(character: human as! Human))
+            resolve: { human, _, _, _ in
+                getFriends(character: human as! Human)
             }
         ),
         "appearsIn": GraphQLField(
@@ -175,7 +165,7 @@ let HumanType = try! GraphQLObjectType(
         "secretBackstory": GraphQLField(
             type: GraphQLString,
             description: "Where are they from and how they came to be who they are.",
-            resolve: { _, _, _, _, _ in
+            resolve: { _, _, _, _ in
                 struct Secret : Error, CustomStringConvertible {
                     let description: String
                 }
@@ -219,8 +209,8 @@ let DroidType = try! GraphQLObjectType(
         "friends": GraphQLField(
             type: GraphQLList(CharacterInterface),
             description: "The friends of the droid, or an empty list if they have none.",
-            resolve: { droid, _, _, eventLoopGroup, _ in
-                return eventLoopGroup.next().newSucceededFuture(result: getFriends(character: droid as! Droid))
+            resolve: { droid, _, _, _ in
+                getFriends(character: droid as! Droid)
             }
         ),
         "appearsIn": GraphQLField(
@@ -230,12 +220,12 @@ let DroidType = try! GraphQLObjectType(
         "secretBackstory": GraphQLField(
             type: GraphQLString,
             description: "Construction date and the name of the designer.",
-            resolve: { _, _, _, _, _ in
-                struct Secret : Error, CustomStringConvertible {
+            resolve: { _, _, _, _ in
+                struct SecretError : Error, CustomStringConvertible {
                     let description: String
                 }
 
-                throw Secret(description: "secretBackstory is secret.")
+                throw SecretError(description: "secretBackstory is secret.")
             }
         ),
         "primaryFunction": GraphQLField(
@@ -277,9 +267,9 @@ let QueryType = try! GraphQLObjectType(
                     "provided, returns the hero of that particular episode."
                 )
             ],
-            resolve: { _, arguments, _, eventLoopGroup, _ in
+            resolve: { _, arguments, _, _ in
                 let episode = Episode(arguments["episode"].string)
-                return eventLoopGroup.next().newSucceededFuture(result: getHero(episode: episode))
+                return getHero(episode: episode)
             }
         ),
         "human": GraphQLField(
@@ -290,8 +280,8 @@ let QueryType = try! GraphQLObjectType(
                     description: "id of the human"
                 )
             ],
-            resolve: { _, arguments, _, eventLoopGroup, _ in
-                return eventLoopGroup.next().newSucceededFuture(result: getHuman(id: arguments["id"].string!))
+            resolve: { _, arguments, _, _ in
+                return getHuman(id: arguments["id"].string!)
             }
         ),
         "droid": GraphQLField(
@@ -302,8 +292,8 @@ let QueryType = try! GraphQLObjectType(
                     description: "id of the droid"
                 )
             ],
-            resolve: { _, arguments, _, eventLoopGroup, _ in
-                return eventLoopGroup.next().newSucceededFuture(result: getDroid(id: arguments["id"].string!))
+            resolve: { _, arguments, _, _ in
+                return getDroid(id: arguments["id"].string!)
             }
         ),
     ]
@@ -313,7 +303,7 @@ let QueryType = try! GraphQLObjectType(
  * Finally, we construct our schema (whose starting query type is the query
  * type we defined above) and export it.
  */
-let StarWarsSchema = try! GraphQLSchema(
+let starWarsSchema = try! GraphQLSchema(
     query: QueryType,
     types: [HumanType, DroidType]
 )

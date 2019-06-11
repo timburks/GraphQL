@@ -1,4 +1,37 @@
+import Foundation
 import NIO
+
+public struct GraphQLResult : Equatable, Encodable, CustomStringConvertible {
+    public var data: Map?
+    public var errors: [GraphQLError]
+    
+    public init(data: Map? = nil, errors: [GraphQLError] = []) {
+        self.data = data
+        self.errors = errors
+    }
+    
+    enum CodingKeys : String, CodingKey {
+        case data
+        case errors
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        if let data = self.data {
+            try container.encode(data, forKey: .data)
+        }
+        
+        if !self.errors.isEmpty {
+            try container.encode(self.errors, forKey: .errors)
+        }
+    }
+    
+    public var description: String {
+        let data = try! JSONEncoder().encode(self)
+        return String(data: data, encoding: .utf8)!
+    }
+}
 
 /// This is the primary entry point function for fulfilling GraphQL operations
 /// by parsing, validating, and executing a GraphQL document along side a
@@ -34,14 +67,14 @@ public func graphql(
     eventLoopGroup: EventLoopGroup,
     variableValues: [String: Map] = [:],
     operationName: String? = nil
-) throws -> EventLoopFuture<Map> {
+) throws -> Future<GraphQLResult> {
 
     let source = Source(body: request, name: "GraphQL request")
     let documentAST = try parse(instrumentation: instrumentation, source: source)
     let validationErrors = validate(instrumentation: instrumentation, schema: schema, ast: documentAST)
 
     guard validationErrors.isEmpty else {
-        return eventLoopGroup.next().newSucceededFuture(result: ["errors": try validationErrors.asMap()])
+        return eventLoopGroup.next().newSucceededFuture(result: GraphQLResult(errors: validationErrors))
     }
 
     return execute(
@@ -76,7 +109,7 @@ public func graphql(
 /// - throws: throws GraphQLError if an error occurs while parsing the `request`.
 ///
 /// - returns: returns a `Map` dictionary containing the result of the query inside the key `data` and any validation or execution errors inside the key `errors`. The value of `data` might be `null` if, for example, the query is invalid. It's possible to have both `data` and `errors` if an error occurs only in a specific field. If that happens the value of that field will be `null` and there will be an error inside `errors` specifying the reason for the failure and the path of the failed field.
-public func graphql<Retrieval:PersistedQueryRetrieval>(
+public func graphql<Retrieval: PersistedQueryRetrieval>(
     queryStrategy: QueryFieldExecutionStrategy = SerialFieldExecutionStrategy(),
     mutationStrategy: MutationFieldExecutionStrategy = SerialFieldExecutionStrategy(),
     subscriptionStrategy: SubscriptionFieldExecutionStrategy = SerialFieldExecutionStrategy(),
@@ -88,14 +121,14 @@ public func graphql<Retrieval:PersistedQueryRetrieval>(
     eventLoopGroup: EventLoopGroup,
     variableValues: [String: Map] = [:],
     operationName: String? = nil
-) throws -> EventLoopFuture<Map> {
+) throws -> Future<GraphQLResult> {
     switch try queryRetrieval.lookup(queryId) {
     case .unknownId(_):
         throw GraphQLError(message: "Unknown query id")
     case .parseError(let parseError):
         throw parseError
     case .validateErrors(_, let validationErrors):
-        return eventLoopGroup.next().newSucceededFuture(result: ["errors": try validationErrors.asMap()])
+        return eventLoopGroup.next().newSucceededFuture(result: GraphQLResult(errors: validationErrors))
     case .result(let schema, let documentAST):
         return execute(
             queryStrategy: queryStrategy,
