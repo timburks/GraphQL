@@ -881,12 +881,12 @@ func completeValue(
                 info: info,
                 path: path,
                 result: .success(result)
-            ).flatMapThrowing { value -> EventLoopFuture<Any?> in
+            ).flatMapThrowing { value -> Any? in
                 guard let value = value else {
                     throw GraphQLError(message: "Cannot return null for non-nullable field \(info.parentType.name).\(info.fieldName).")
                 }
-
-                return exeContext.eventLoopGroup.next().makeSucceededFuture(value)
+                
+                return value
             }
         }
 
