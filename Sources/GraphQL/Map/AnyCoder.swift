@@ -411,7 +411,7 @@ fileprivate struct _AnyKeyedEncodingContainer<K : CodingKey> : KeyedEncodingCont
         // Since the float may be invalid and throw, the coding path needs to contain this key.
         self.encoder.codingPath.append(key)
         defer { self.encoder.codingPath.removeLast() }
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         self.container[_converted(key).stringValue._bridgeToObjectiveC()] = try self.encoder.box(value)
         #else
         self.container[_converted(key).stringValue] = try self.encoder.box(value)
@@ -422,7 +422,7 @@ fileprivate struct _AnyKeyedEncodingContainer<K : CodingKey> : KeyedEncodingCont
         // Since the double may be invalid and throw, the coding path needs to contain this key.
         self.encoder.codingPath.append(key)
         defer { self.encoder.codingPath.removeLast() }
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         self.container[_converted(key).stringValue._bridgeToObjectiveC()] = try self.encoder.box(value)
         #else
         self.container[_converted(key).stringValue] = try self.encoder.box(value)
@@ -432,7 +432,7 @@ fileprivate struct _AnyKeyedEncodingContainer<K : CodingKey> : KeyedEncodingCont
     public mutating func encode<T : Encodable>(_ value: T, forKey key: Key) throws {
         self.encoder.codingPath.append(key)
         defer { self.encoder.codingPath.removeLast() }
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         self.container[_converted(key).stringValue._bridgeToObjectiveC()] = try self.encoder.box(value)
         #else
         self.container[_converted(key).stringValue] = try self.encoder.box(value)
@@ -441,7 +441,7 @@ fileprivate struct _AnyKeyedEncodingContainer<K : CodingKey> : KeyedEncodingCont
 
     public mutating func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> {
         let dictionary = NSMutableDictionary()
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         self.container[_converted(key).stringValue._bridgeToObjectiveC()] = dictionary
         #else
         self.container[_converted(key).stringValue] = dictionary
@@ -456,7 +456,7 @@ fileprivate struct _AnyKeyedEncodingContainer<K : CodingKey> : KeyedEncodingCont
 
     public mutating func nestedUnkeyedContainer(forKey key: Key) -> UnkeyedEncodingContainer {
         let array = NSMutableArray()
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         self.container[_converted(key).stringValue._bridgeToObjectiveC()] = array
         #else
         self.container[_converted(key).stringValue] = array
@@ -828,7 +828,7 @@ extension _AnyEncoder {
     // This method is called "box_" instead of "box" to disambiguate it from the overloads. Because the return type here is different from all of the "box" overloads (and is more general), any "box" calls in here would call back into "box" recursively instead of calling the appropriate overload, which is not what we want.
     fileprivate func box_(_ value: Encodable) throws -> NSObject? {
         let type = Swift.type(of: value)
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         if type == Date.self {
             // Respect Date encoding strategy
             return try self.box((value as! Date))
@@ -2048,7 +2048,7 @@ extension _AnyDecoder {
     fileprivate func unbox(_ value: Any, as type: Bool.Type) throws -> Bool? {
         guard !(value is NSNull) else { return nil }
 
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         // Bridging differences require us to split implementations here
         guard let number = __SwiftValue.store(value) as? NSNumber else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: type, reality: value)
@@ -2427,7 +2427,7 @@ extension _AnyDecoder {
     }
 
     fileprivate func unbox_(_ value: Any, as type: Decodable.Type) throws -> Any? {
-        #if DEPLOYMENT_RUNTIME_SWIFT
+        #if os(Linux)
         // Bridging differences require us to split implementations here
         if type == Date.self {
             guard let date = try self.unbox(value, as: Date.self) else { return nil }
